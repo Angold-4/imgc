@@ -7,7 +7,9 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as LS
 import torch.utils.data as data
 
-from torchvision import transforms, datasets
+from torchvision import transforms
+
+import dataset
 
 def resume(epoch=None):
     if epoch is None:
@@ -40,7 +42,6 @@ def save(index, epoch=True):
     torch.save(decoder.state_dict(), 'checkpoint/decoder_{}_{:08d}.pth'.format(s, index))
 
 
-
 if __name__ == "__main__":
 
     """ Parse the arguments """
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', type=int, help='unroll iterations')
     args = parser.parse_args()
 
-    if torch.cuda.is_available() != args.cuda:
+    if torch.cuda.is_available() == False and torch.cuda.is_available() != args.cuda:
         print("It seems that your device do not support cuda, if you want to use CPU to training, please remove '--cuda'")
         exit()
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     ])
 
 
-    train_set = datasets.ImageFolder(root=args.train, transform=train_transform)
+    train_set = dataset.ImageFolder(root=args.train, transform=train_transform)
     train_loader = data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
     print('total images: {}; total batches: {}'.format(len(train_set), len(train_loader)))
@@ -127,21 +128,21 @@ if __name__ == "__main__":
                 patches = data[0].cuda()
 
             else:
-                encoder_h_1 = (torch.zeros(data[0].size(0), 256, 8, 8),
-                               torch.zeros(data[0].size(0), 256, 8, 8))
-                encoder_h_2 = (torch.zeros(data[0].size(0), 512, 4, 4),
-                               torch.zeros(data[0].size(0), 512, 4, 4))
-                encoder_h_3 = (torch.zeros(data[0].size(0), 512, 2, 2),
-                               torch.zeros(data[0].size(0), 512, 2, 2))
+                encoder_h_1 = (torch.zeros(data.size(0), 256, 8, 8),
+                               torch.zeros(data.size(0), 256, 8, 8))
+                encoder_h_2 = (torch.zeros(data.size(0), 512, 4, 4),
+                               torch.zeros(data.size(0), 512, 4, 4))
+                encoder_h_3 = (torch.zeros(data.size(0), 512, 2, 2),
+                               torch.zeros(data.size(0), 512, 2, 2))
 
-                decoder_h_1 = (torch.zeros(data[0].size(0), 512, 2, 2),
-                               torch.zeros(data[0].size(0), 512, 2, 2))
-                decoder_h_2 = (torch.zeros(data[0].size(0), 512, 4, 4),
-                               torch.zeros(data[0].size(0), 512, 4, 4))
-                decoder_h_3 = (torch.zeros(data[0].size(0), 256, 8, 8),
-                               torch.zeros(data[0].size(0), 256, 8, 8))
-                decoder_h_4 = (torch.zeros(data[0].size(0), 128, 16, 16),
-                               torch.zeros(data[0].size(0), 128, 16, 16))
+                decoder_h_1 = (torch.zeros(data.size(0), 512, 2, 2),
+                               torch.zeros(data.size(0), 512, 2, 2))
+                decoder_h_2 = (torch.zeros(data.size(0), 512, 4, 4),
+                               torch.zeros(data.size(0), 512, 4, 4))
+                decoder_h_3 = (torch.zeros(data.size(0), 256, 8, 8),
+                               torch.zeros(data.size(0), 256, 8, 8))
+                decoder_h_4 = (torch.zeros(data.size(0), 128, 16, 16),
+                               torch.zeros(data.size(0), 128, 16, 16))
                 patches = data[0]
 
             solver.zero_grad()
