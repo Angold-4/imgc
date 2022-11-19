@@ -59,6 +59,8 @@ def batchsave(original, learned, batchnum, epoch):
         # layer -> a display layer: orginalx1, learnedx16, outputx1
         layer = original[ib]
         output = torch.zeros((3, 32, 32))
+        if torch.cuda.is_available():
+            output = output.cuda()
         for i in range(0, 16):
             xl = learned[i][ib]
             layer = torch.cat((layer, xl), 2)
