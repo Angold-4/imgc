@@ -23,11 +23,11 @@ def resume(epoch=None):
         s = 'epoch'
 
     encoder.load_state_dict(
-        torch.load('checkpoint/encoder_{}_{:08d}.pth'.format(s, epoch)))
+        torch.load('checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
     binarizer.load_state_dict(
-        torch.load('checkpoint/binarizer_{}_{:08d}.pth'.format(s, epoch)))
+        torch.load('checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, epoch)))
     decoder.load_state_dict(
-        torch.load('checkpoint/decoder_{}_{:08d}.pth'.format(s, epoch)))
+        torch.load('checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
 
 
 def save(index, epoch=True):
@@ -39,48 +39,46 @@ def save(index, epoch=True):
     else:
         s = 'iter'
 
-    torch.save(encoder.state_dict(), 'checkpoint/encoder_{}_{:08d}.pth'.format(s, index))
+    torch.save(encoder.state_dict(), 'checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, index))
 
-    torch.save(binarizer.state_dict(), 'checkpoint/binarizer_{}_{:08d}.pth'.format(s, index))
+    torch.save(binarizer.state_dict(), 'checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, index))
 
-    torch.save(decoder.state_dict(), 'checkpoint/decoder_{}_{:08d}.pth'.format(s, index))
+    torch.save(decoder.state_dict(), 'checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, index))
 
 def batchsave(original, learned, batchnum, epoch):
     # save 1 image 
     if not os.path.exists('cptrainimg'):
         os.mkdir('cptrainimg')
 
-    if not os.path.exists('cptrainimg/batch_{}'.format(batchnum)):
-        os.mkdir('cptrainimg/batch_{}'.format(batchnum))
-    # TODO Windows path support
+    if not os.path.exists('cptrainimg{}batch_{}'.format(os.sep, batchnum)):
+        os.mkdir('cptrainimg{}batch_{}'.format(os.sep, batchnum))
 
     batchimg = torch.randn((3, 32, 32)) # define as global variable
-    for ib in range(32): # image in baches
+    print(learned[0].size(0))
+    for ib in range(learned[0].size(0)): # image in baches
         # layer -> a display layer: orginalx1, learnedx16, outputx1
         layer = original[ib]
         output = torch.zeros((3, 32, 32))
-        for i in range(0, 16, 2):
+        for i in range(0, 16):
             xl = learned[i][ib]
-            xll = learned[i+1][ib]
-            layer = torch.cat((layer, xl, xll), 2)
+            layer = torch.cat((layer, xl), 2)
             output += xl
 
-        layer = torch.cat((layer, output, output), 2)
+        layer = torch.cat((layer, output), 2)
         if ib == 0: # init
             batchimg = layer
         else:
             batchimg = torch.cat((batchimg, layer), 1)
 
-    save_image(batchimg, 'cptrainimg/batch_{}/epoch_{}.jpg'.format(batch, epoch))
+    save_image(batchimg, 'cptrainimg{}batch_{}{}epoch_{}.jpg'.format(os.sep, batch, os.sep, epoch))
 
 
 def saveimg(data, learned, output, epoch, batch):
     if not os.path.exists('cptrainimg'):
         os.mkdir('cptrainimg')
 
-    if not os.path.exists('cptrainimg/batch_{}'.format(batch)):
+    if not os.path.exists('cptrainimg{}batch_{}'.format(batch)):
         os.mkdir('batch_{}'.format(batch))
-    # TODO Windows path support
 
     xdata = data[0]
     for i in range(1, 32):
@@ -170,7 +168,6 @@ if __name__ == "__main__":
         for batch, data in enumerate(train_loader):
             batch_t0 = time.time()
 
-            print(data.size(0))
             if args.cuda:
                 ## init lstm state -> The hidden layer (cell state)
                 encoder_h_1 = (torch.zeros(data.size(0), 256, 8, 8).cuda(),
