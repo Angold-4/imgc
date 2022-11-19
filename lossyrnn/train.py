@@ -2,6 +2,8 @@ import time
 import os
 import argparse
 
+import numpy as np
+
 import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as LS
@@ -42,6 +44,35 @@ def save(index, epoch=True):
     torch.save(binarizer.state_dict(), 'checkpoint/binarizer_{}_{:08d}.pth'.format(s, index))
 
     torch.save(decoder.state_dict(), 'checkpoint/decoder_{}_{:08d}.pth'.format(s, index))
+
+def batchsave(original, learned, batchnum, epoch):
+    # save 1 image 
+    if not os.path.exists('cptrainimg'):
+        os.mkdir('cptrainimg')
+
+    if not os.path.exists('cptrainimg/batch_{}'.format(batchnum)):
+        os.mkdir('cptrainimg/batch_{}'.format(batchnum))
+    # TODO Windows path support
+
+    batchimg = torch.randn((3, 32, 32)) # define as global variable
+    for ib in range(32): # image in baches
+        # layer -> a display layer: orginalx1, learnedx16, outputx1
+        layer = original[ib]
+        output = torch.zeros((3, 32, 32))
+        for i in range(0, 16, 2):
+            xl = learned[i][ib]
+            xll = learned[i+1][ib]
+            layer = torch.cat((layer, xl, xll), 2)
+            output += xl
+
+        layer = torch.cat((layer, output, output), 2)
+        if ib == 0: # init
+            batchimg = layer
+        else:
+            batchimg = torch.cat((batchimg, layer), 1)
+
+    save_image(batchimg, 'cptrainimg/batch_{}/epoch_{}.jpg'.format(batch, epoch))
+
 
 def saveimg(data, learned, output, epoch, batch):
     if not os.path.exists('cptrainimg'):
@@ -109,7 +140,6 @@ if __name__ == "__main__":
     """ Load networks on CPU / GPU """
 
     import network
-
     encoder = network.EncoderCell()
     binarizer = network.Binarizer()
     decoder = network.DecoderCell()
@@ -181,6 +211,7 @@ if __name__ == "__main__":
             solver.zero_grad()
 
             losses = []
+            learned = [] # the img residuals that feed into next iteration
 
             res = patches - 0.5 # blur
 
@@ -201,13 +232,15 @@ if __name__ == "__main__":
                 res = res - output # result: result plus residuals -> final reconstructed image 
                 # the similarity between original and reconstructed (loss function)
 
+                learned.append(output) # learned result, feed to the next iteration
                 losses.append(res.abs().mean())
 
             # saveimg(data=patches, learned=res, output=output, epoch=epoch, batch=batch)
+            batchsave(original=data, learned=learned, batchnum=batch, epoch=epoch)
 
             bp_t1 = time.time()
             # Sum of the residuals
-            loss = sum(losses) / args.iterations
+            loss = sum(losses) / args.iterations # sum them together
             loss.backward() # Tensor.backward(), calculate gradiance
 
             solver.step()   # solver update the model
