@@ -7,6 +7,8 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as LS
 import torch.utils.data as data
 
+from torchvision.utils import save_image
+
 from torchvision import transforms
 
 import dataset
@@ -41,6 +43,38 @@ def save(index, epoch=True):
 
     torch.save(decoder.state_dict(), 'checkpoint/decoder_{}_{:08d}.pth'.format(s, index))
 
+def saveimg(data, learned, output, epoch, batch):
+    if not os.path.exists('cptrainimg'):
+        os.mkdir('cptrainimg')
+
+    if not os.path.exists('cptrainimg/batch_{}'.format(batch)):
+        os.mkdir('batch_{}'.format(batch))
+    # TODO Windows path support
+
+    xdata = data[0]
+    for i in range(1, 32):
+        xdata = torch.cat((xdata, data[i]), 1)
+    save_image(xdata, 'cptrainimg/data_{}_{}.png'.format(epoch, batch))
+
+    xdata = learned[0]
+    for i in range(1, 32):
+        xdata = torch.cat((xdata, learned[i]), 1)
+    save_image(xdata, 'cptrainimg/learned_{}_{}_{}.png'.format(epoch, batch))
+
+    xdatar = output[0][0]
+    xdatag = output[0][1]
+    xdatab = output[0][2]
+    xdatal = torch.cat((xdatar, xdatag, xdatab), 1)
+    xdata = xdatal
+    for i in range(1, 32):
+        xdatar = output[i][0]
+        xdatag = output[i][1]
+        xdatab = output[i][2]
+        xdatal = torch.cat((xdatar, xdatag, xdatab), 1)
+        xdata = torch.cat((xdata, xdatal), 0)
+
+    save_image(xdata, 'cptrainimg/batch_{}/residuals_{}.png'.format(batch, epoch), normalize=True)
+
 
 if __name__ == "__main__":
 
@@ -67,12 +101,10 @@ if __name__ == "__main__":
         transforms.ToTensor(),
     ])
 
-
     train_set = dataset.ImageFolder(root=args.train, transform=train_transform)
     train_loader = data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
     print('total images: {}; total batches: {}'.format(len(train_set), len(train_loader)))
-
 
     """ Load networks on CPU / GPU """
 
@@ -108,6 +140,7 @@ if __name__ == "__main__":
         for batch, data in enumerate(train_loader):
             batch_t0 = time.time()
 
+            print(data.size(0))
             if args.cuda:
                 ## init lstm state -> The hidden layer (cell state)
                 encoder_h_1 = (torch.zeros(data.size(0), 256, 8, 8).cuda(),
@@ -125,7 +158,7 @@ if __name__ == "__main__":
                                torch.zeros(data.size(0), 256, 8, 8).cuda())
                 decoder_h_4 = (torch.zeros(data.size(0), 128, 16, 16).cuda(),
                                torch.zeros(data.size(0), 128, 16, 16).cuda())
-                patches = data[0].cuda()
+                patches = data.cuda()
 
             else:
                 encoder_h_1 = (torch.zeros(data.size(0), 256, 8, 8),
@@ -143,19 +176,20 @@ if __name__ == "__main__":
                                torch.zeros(data.size(0), 256, 8, 8))
                 decoder_h_4 = (torch.zeros(data.size(0), 128, 16, 16),
                                torch.zeros(data.size(0), 128, 16, 16))
-                patches = data[0]
+                patches = data
 
             solver.zero_grad()
 
             losses = []
 
-            res = patches - 0.5
+            res = patches - 0.5 # blur
 
             bp_t0 = time.time()
 
+            output = torch.Tensor((3, 3, 32, 32))
 
             """ Perform many iterations in the same data """
-            for _ in range(args.iterations):
+            for i in range(args.iterations):
                 # Auto-Gain Addictive Reconstruction:
                 # we call that encoder, means call the forward function (encoder_h_x stands for lstm cell state in our model)
                 # for every data, it is different, init 0 info, for the same data, it is accumulated
@@ -164,8 +198,12 @@ if __name__ == "__main__":
                 output, decoder_h_1, decoder_h_2, decoder_h_3, decoder_h_4 = decoder(
                         codes, decoder_h_1, decoder_h_2, decoder_h_3, decoder_h_4)
 
-                res = res - output
+                res = res - output # result: result plus residuals -> final reconstructed image 
+                # the similarity between original and reconstructed (loss function)
+
                 losses.append(res.abs().mean())
+
+            # saveimg(data=patches, learned=res, output=output, epoch=epoch, batch=batch)
 
             bp_t1 = time.time()
             # Sum of the residuals
@@ -183,7 +221,7 @@ if __name__ == "__main__":
 
             index = (epoch - 1) * len(train_loader) + batch
 
-            ## save checkpoint every 500 training steps
+            ## save checkpoint and display the output image every 500 training steps
             if index % 500 == 0:
                 save(0, False)
 
