@@ -233,7 +233,7 @@ if __name__ == "__main__":
                 losses.append(res.abs().mean())
 
             # saveimg(data=patches, learned=res, output=output, epoch=epoch, batch=batch)
-            batchsave(original=data, learned=learned, batchnum=batch, epoch=epoch)
+            batchsave(original=patches, learned=learned, batchnum=batch, epoch=epoch)
 
             bp_t1 = time.time()
             # Sum of the residuals
