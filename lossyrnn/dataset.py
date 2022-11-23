@@ -33,9 +33,12 @@ class ImageFolder(data.Dataset):
 
     def __init__(self, root, transform=None, loader=default_loader):
         images = []
-        for filename in os.listdir(root):
-            if is_image_file(filename):
-                images.append('{}'.format(filename))
+        # Seqential (No random)
+        for dirname in os.listdir(root):
+            if os.path.isdir(os.path.join(root, dirname)):
+                for filename in os.listdir(os.path.join(root, dirname)):
+                    if is_image_file(filename):
+                        images.append('{}'.format(filename))
 
         self.root = root
         self.imgs = images
