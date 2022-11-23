@@ -33,10 +33,6 @@ with torch.no_grad():
 batch_size, input_channels, height, width = image.size()
 assert height % 32 == 0 and width % 32 == 0
 
-# DEBUG
-print(image.size())
-print(image)
-
 import network
 
 encoder = network.EncoderCell()
@@ -95,7 +91,7 @@ elif not args.cuda:
 """ Encode the image """
 
 codes = []
-res = image - 0.5 # ?
+# res = image - 0.5 # ?
 
 for iters in range(args.iterations):
     encoded, encoder_h_1, encoder_h_2, encoder_h_3 = encoder(

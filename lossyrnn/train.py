@@ -2,8 +2,6 @@ import time
 import os
 import argparse
 
-import numpy as np
-
 import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as LS
@@ -46,7 +44,10 @@ def save(index, epoch=True):
     torch.save(decoder.state_dict(), 'checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, index))
 
 def batchsave(original, learned, batchnum, epoch):
-    # save 1 image 
+    # save 1 image from the verification patch (0->156)
+    if batchnum > 156:
+        return
+
     if not os.path.exists('cptrainimg'):
         os.mkdir('cptrainimg')
 
@@ -127,13 +128,16 @@ if __name__ == "__main__":
 
     """ Load 32x32 patches from images to training """
 
+    """ Training consists of two parts -> 157 Verification patch + many training example """
+
     train_transform = transforms.Compose([
-        # transforms.RandomCrop((32, 32)), # random crop 32x32 piece from that photo
+        transforms.RandomCrop((32, 32)), # random crop 32x32 piece from that photo
         transforms.ToTensor(),
     ])
 
     train_set = dataset.ImageFolder(root=args.train, transform=train_transform)
-    train_loader = data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    """ Since we do not want to mix up the validate && training dataset, set suffle = False """
+    train_loader = data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=False, num_workers=1)
 
     print('total images: {}; total batches: {}'.format(len(train_set), len(train_loader)))
 
@@ -212,7 +216,9 @@ if __name__ == "__main__":
             losses = []
             learned = [] # the img residuals that feed into next iteration
 
-            res = patches - 0.5 # blur
+            # res = patches - 0.5 # why do we need that?
+
+            res = patches
 
             bp_t0 = time.time()
 

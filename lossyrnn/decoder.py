@@ -32,7 +32,10 @@ import network
 decoder = network.DecoderCell()
 decoder.eval()
 
-decoder.load_state_dict(torch.load(args.model))
+if args.cuda and torch.cuda.is_available():
+    decoder.load_state_dict(torch.load(args.model))
+else: 
+    decoder.load_state_dict(torch.load(args.model, map_location=torch.device('cpu')))
 
 with torch.no_grad():
     # hidden cell state, each image is differnet, but with the same start value
@@ -45,7 +48,7 @@ with torch.no_grad():
     decoder_h_4 = (torch.zeros(batch_size, 128, height // 2, width // 2),
                   torch.zeros(batch_size, 128, height // 2, width // 2))
 
-if args.cuda and torch.cuda.is_available() == True:
+if args.cuda and torch.cuda.is_available():
     decoder = decoder.cuda()
     codes = codes.cuda()
     decoder_h_1 = (decoder_h_1[0].cuda(), decoder_h_1[1].cuda())
@@ -53,9 +56,11 @@ if args.cuda and torch.cuda.is_available() == True:
     decoder_h_3 = (decoder_h_3[0].cuda(), decoder_h_3[1].cuda())
     decoder_h_4 = (decoder_h_4[0].cuda(), decoder_h_4[1].cuda())
 
-image = torch.zeros(1, 3, height, width) + 0.5
+# image = torch.zeros(1, 3, height, width) + 0.5
+image = torch.zeros(1, 3, height, width)
+
 for iters in range(min(args.iterations, codes.size(0))):
     output, decoder_h_1, decoder_h_2, decoder_h_3, decoder_h_4 = decoder(
         codes[iters], decoder_h_1, decoder_h_2, decoder_h_3, decoder_h_4)
     image = image + output.data.cpu()
-    save_image(image, os.path.join(args.output, '{:02d}.png').format(iters))
+    save_image(image, os.path.join(args.output, '{:02d}.jpg').format(iters))
