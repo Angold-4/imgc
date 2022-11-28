@@ -20,12 +20,20 @@ def resume(epoch=None):
     else:
         s = 'epoch'
 
-    encoder.load_state_dict(
-        torch.load('checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
-    binarizer.load_state_dict(
-        torch.load('checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, epoch)))
-    decoder.load_state_dict(
-        torch.load('checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
+    if torch.cuda.is_available() and args.cuda:
+        encoder.load_state_dict(
+            torch.load('checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('gpu')))
+        binarizer.load_state_dict(
+            torch.load('checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('gpu')))
+        decoder.load_state_dict(
+            torch.load('checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('gpu')))
+    else:
+        encoder.load_state_dict(
+            torch.load('checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('cpu')))
+        binarizer.load_state_dict(
+            torch.load('checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('cpu')))
+        decoder.load_state_dict(
+            torch.load('checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, epoch), map_location=torch.device('cpu')))
 
 
 def save(index, epoch=True):
@@ -108,6 +116,19 @@ def saveimg(data, learned, output, epoch, batch):
 
 
 if __name__ == "__main__":
+    def resume(epoch=None):
+        if epoch is None:
+            s = 'iter'
+            epoch = 0
+        else:
+            s = 'epoch'
+
+        encoder.load_state_dict(
+            torch.load('checkpoint{}encoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
+        binarizer.load_state_dict(
+            torch.load('checkpoint{}binarizer_{}_{:08d}.pth'.format(os.sep, s, epoch)))
+        decoder.load_state_dict(
+            torch.load('checkpoint{}decoder_{}_{:08d}.pth'.format(os.sep, s, epoch)))
 
     """ Parse the arguments """
 
@@ -146,7 +167,8 @@ if __name__ == "__main__":
     encoder = network.EncoderCell()
     binarizer = network.Binarizer()
     decoder = network.DecoderCell()
-    if args.cuda:
+
+    if args.cuda and torch.cuda.is_available():
         encoder = encoder.cuda()
         binarizer = binarizer.cuda()
         decoder = decoder.cuda()
