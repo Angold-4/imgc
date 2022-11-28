@@ -38,7 +38,7 @@ class ImageFolder(data.Dataset):
             if os.path.isdir(os.path.join(root, dirname)):
                 for filename in os.listdir(os.path.join(root, dirname)):
                     if is_image_file(filename):
-                        images.append('{}'.format(filename))
+                        images.append('{}'.format(os.path.join(dirname, filename)))
 
         self.root = root
         self.imgs = images

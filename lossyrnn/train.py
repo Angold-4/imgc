@@ -220,6 +220,8 @@ if __name__ == "__main__":
 
             res = patches
 
+            print(res)
+
             bp_t0 = time.time()
 
             output = torch.Tensor((3, 3, 32, 32))
@@ -240,7 +242,6 @@ if __name__ == "__main__":
                 learned.append(output) # learned result, feed to the next iteration
                 losses.append(res.abs().mean())
 
-            # saveimg(data=patches, learned=res, output=output, epoch=epoch, batch=batch)
             batchsave(original=patches, learned=learned, batchnum=batch, epoch=epoch)
 
             bp_t1 = time.time()
