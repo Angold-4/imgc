@@ -55,7 +55,6 @@ def batchsave(original, learned, batchnum, epoch):
         os.mkdir('cptrainimg{}batch_{}'.format(os.sep, batchnum))
 
     batchimg = torch.randn((3, 32, 32)) # define as global variable
-    print(learned[0].size(0))
     for ib in range(learned[0].size(0)): # image in baches
         # layer -> a display layer: orginalx1, learnedx16, outputx1
         layer = original[ib]
@@ -220,7 +219,6 @@ if __name__ == "__main__":
 
             res = patches
 
-            print(res)
 
             bp_t0 = time.time()
 
