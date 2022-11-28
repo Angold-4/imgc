@@ -92,6 +92,7 @@ elif not args.cuda:
 
 codes = []
 # res = image - 0.5 # ?
+res = image 
 
 for iters in range(args.iterations):
     encoded, encoder_h_1, encoder_h_2, encoder_h_3 = encoder(
