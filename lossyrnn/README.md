@@ -50,17 +50,46 @@ py -m pip install -r requirements.txt
 If you want to train this model on your own machine, I made a copy of [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset [here](https://drive.google.com/file/d/1kWt_JKkkR1ORckDixkVmAkA4miY7R-GA/view?usp=share_link). (If you don't have a GPU, remove `--cuda`)
 
 #### With cuda support
+
 ```
 python3 train.py --batch-size 32 --cuda -f <dataset path>
 ```
-
-#### Without cuda support
-```
-python3 train.py --batch-size 32 -f <dataset path>
-```
-
+(remove the `--cuda` label if you want to disable the gpu)
 
 ### ii. Evaluation
 
+#### Encode & Decode
+**Using your trained model to compress any image:**
 
+* Encode
+```
+python3 encoder.py --model <encoder.pth path> --input <input path> --output <output path>
+```
+* Decode
+```
+python3 decoder.py --model <decoder.pth path> --input <input.npz path> --out <output path>
+```
+
+#### Experiment (OSX Only)
+**Evaluate the performance of your trained model by comparing the [SSIM](https://en.wikipedia.org/wiki/Structural_similarity) with jpeg2000.**
+
+1. Get testing kodak images:
+```sh
+./experiment/get_kodak.sh
+```
+
+2. Compress them using your model
+```sh
+./experiment/enc_dec.sh
+```
+
+3. Compress them using jpeg2000 (make sure you've installed imagemagick)
+```sh
+./experiment/jpeg.sh
+```
+
+4. Comparing them by running SSIM scripts.
+```sh
+./experiment/ssim.sh
+```
 
