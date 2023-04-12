@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load the VAE model
-latent_dim = 64
+latent_dim = 256
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 vae = VAE(latent_dim).to(device)
 

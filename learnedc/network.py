@@ -15,9 +15,11 @@ class Encoder(nn.Module):
             nn.ReLU(),
             nn.Conv2d(512, 1024, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Conv2d(1024, 2048, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
         )
-        self.fc_mu = nn.Linear(1024 * 3 * 3, latent_dim)
-        self.fc_logvar = nn.Linear(1024 * 3 * 3, latent_dim)
+        self.fc_mu = nn.Linear(2048 * 3 * 3, latent_dim)
+        self.fc_logvar = nn.Linear(2048 * 3 * 3, latent_dim)
 
     def forward(self, x):
         x = self.conv_layers(x)
@@ -29,8 +31,10 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(latent_dim, 1024 * 3 * 3)
+        self.fc = nn.Linear(latent_dim, 2048 * 3 * 3)
         self.conv_layers = nn.Sequential(
+            nn.ConvTranspose2d(2048, 1024, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
             nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
@@ -45,7 +49,7 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         x = self.fc(x)
-        x = x.view(x.size(0), 1024, 3, 3)
+        x = x.view(x.size(0), 2048, 3, 3)
         x = self.conv_layers(x)
         return x
 
