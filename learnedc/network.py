@@ -5,17 +5,19 @@ class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(512, 1024, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
         )
-        self.fc_mu = nn.Linear(256 * 6 * 6, latent_dim)
-        self.fc_logvar = nn.Linear(256 * 6 * 6, latent_dim)
+        self.fc_mu = nn.Linear(1024 * 3 * 3, latent_dim)
+        self.fc_logvar = nn.Linear(1024 * 3 * 3, latent_dim)
 
     def forward(self, x):
         x = self.conv_layers(x)
@@ -27,21 +29,23 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(latent_dim, 256 * 6 * 6)
+        self.fc = nn.Linear(latent_dim, 1024 * 3 * 3)
         self.conv_layers = nn.Sequential(
+            nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 3, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
         )
 
     def forward(self, x):
         x = self.fc(x)
-        x = x.view(x.size(0), 256, 6, 6)
+        x = x.view(x.size(0), 1024, 3, 3)
         x = self.conv_layers(x)
         return x
 
