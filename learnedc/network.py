@@ -1,42 +1,49 @@
-import torch
+import torch 
 import torch.nn as nn
 
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(3, 64, 4, 2, 1),
+        self.conv_layers = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 128, 4, 2, 1),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Flatten(),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
         )
-        self.fc_mean = nn.Linear(128 * 8 * 8, latent_dim)
-        self.fc_logvar = nn.Linear(128 * 8 * 8, latent_dim)
+        self.fc_mu = nn.Linear(256 * 6 * 6, latent_dim)
+        self.fc_logvar = nn.Linear(256 * 6 * 6, latent_dim)
 
     def forward(self, x):
-        h = self.conv(x)
-        mean = self.fc_mean(h)
-        logvar = self.fc_logvar(h)
-        return mean, logvar
-
+        x = self.conv_layers(x)
+        x = x.view(x.size(0), -1)
+        mu = self.fc_mu(x)
+        logvar = self.fc_logvar(x)
+        return mu, logvar
 
 class Decoder(nn.Module):
     def __init__(self, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(latent_dim, 128 * 8 * 8)
-        self.conv = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
+        self.fc = nn.Linear(latent_dim, 256 * 6 * 6)
+        self.conv_layers = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 3, 4, 2, 1),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 3, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
         )
 
-    def forward(self, z):
-        h = self.fc(z).view(-1, 128, 8, 8)
-        x_recon = self.conv(h)
-        return x_recon
-
+    def forward(self, x):
+        x = self.fc(x)
+        x = x.view(x.size(0), 256, 6, 6)
+        x = self.conv_layers(x)
+        return x
 
 class VAE(nn.Module):
     def __init__(self, latent_dim):
@@ -44,14 +51,13 @@ class VAE(nn.Module):
         self.encoder = Encoder(latent_dim)
         self.decoder = Decoder(latent_dim)
 
-    def reparameterize(self, mean, logvar):
+    def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        z = mean + eps * std
-        return z
+        return mu + eps * std
 
     def forward(self, x):
-        mean, logvar = self.encoder(x)
-        z = self.reparameterize(mean, logvar)
+        mu, logvar = self.encoder(x)
+        z = self.reparameterize(mu, logvar)
         x_recon = self.decoder(z)
-        return x_recon, mean, logvar
+        return x_recon, mu, logvar
