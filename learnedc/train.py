@@ -22,7 +22,8 @@ def loss_function(recon_x, x, mu, logvar):
     return BCE + KLD
 
 # Set up the optimizer
-optimizer = optim.Adam(vae.parameters(), lr=1e-3)
+optimizer = optim.Adam(vae.parameters(), lr=1e-3, weight_decay=1e-5)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
 # Define the data loading
 transform = transforms.Compose([
@@ -32,8 +33,8 @@ transform = transforms.Compose([
 trainset = STL10(root='./data', split='train', download=True, transform=transform)
 testset = STL10(root='./data', split='test', download=True, transform=transform)
 
-trainloader = DataLoader(trainset, batch_size=128, shuffle=True, num_workers=4)
-testloader = DataLoader(testset, batch_size=128, shuffle=False, num_workers=4)
+trainloader = DataLoader(trainset, batch_size=8, shuffle=True, num_workers=4)
+testloader = DataLoader(testset, batch_size=8, shuffle=False, num_workers=4)
 
 if __name__ == '__main__':
     if not os.path.exists("model"):
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         os.makedirs("vis")
 
     # Training loop
-    num_epochs = 20
+    num_epochs = 200
     for epoch in range(num_epochs):
         vae.train()
         train_loss = 0
@@ -66,7 +67,9 @@ if __name__ == '__main__':
                 recon_batch, mu, logvar = vae(data)
                 test_loss += loss_function(recon_batch, data, mu, logvar).item()
 
-        print(f'====> Test set loss: {test_loss / len(testloader.dataset):.4f}') # type: ignore
+        test_loss /= len(testloader.dataset) # type: ignore
+        print(f'====> Test set loss: {test_loss:.4f}')
+        scheduler.step(test_loss)
         torch.save(vae.state_dict(), f"model/vae_weights_{epoch}.pth")
 
         # Visualization

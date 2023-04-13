@@ -2,6 +2,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+class HyperpriorEncoder(nn.Module):
+    def __init__(self, latent_dim, hyperprior_latent_dim):
+        super(HyperpriorEncoder, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(latent_dim, latent_dim // 2),
+            nn.ReLU(),
+            nn.Linear(latent_dim // 2, latent_dim // 4),
+            nn.ReLU(),
+            nn.Linear(latent_dim // 4, hyperprior_latent_dim * 2)
+        )
+
+    def forward(self, z):
+        out = self.layers(z)
+        mu, logvar = out[:, :hyperprior_latent_dim], out[:, hyperprior_latent_dim:]
+        return mu, logvar
+
+class HyperpriorDecoder(nn.Module):
+    def __init__(self, latent_dim, hyperprior_latent_dim):
+        super(HyperpriorDecoder, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(hyperprior_latent_dim, latent_dim // 4),
+            nn.ReLU(),
+            nn.Linear(latent_dim // 4, latent_dim // 2),
+            nn.ReLU(),
+            nn.Linear(latent_dim // 2, latent_dim)
+        )
+
+    def forward(self, w):
+        z = self.layers(w)
+        return z
+"""
+
 class GDN(nn.Module):
     def __init__(self, channels, beta_min=1e-6):
         super(GDN, self).__init__()
