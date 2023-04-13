@@ -55,18 +55,20 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(512, 1024, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(512),
             nn.ReLU(),
         )
-        self.fc_mu = nn.Linear(1024 * 3 * 3, latent_dim)
-        self.fc_logvar = nn.Linear(1024 * 3 * 3, latent_dim)
+        self.fc_mu = nn.Linear(512 * 6 * 6, latent_dim)
+        self.fc_logvar = nn.Linear(512 * 6 * 6, latent_dim)
 
     def forward(self, x):
         x = self.conv_layers(x)
@@ -78,15 +80,16 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(2 * latent_dim, 1024 * 3 * 3)
+        self.fc = nn.Linear(2 * latent_dim, 512 * 6 * 6)
         self.conv_layers = nn.Sequential(
-            nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
@@ -94,7 +97,7 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         x = self.fc(x)
-        x = x.view(x.size(0), 1024, 3, 3)
+        x = x.view(x.size(0), 512, 6, 6)
         x = self.conv_layers(x)
         return x
 

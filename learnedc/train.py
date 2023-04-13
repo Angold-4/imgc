@@ -42,6 +42,7 @@ optimizer = optim.Adam(vae.parameters(), lr=1e-4, weight_decay=1e-5)
 
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
+"""
 def train_vae(vae, optimizer, scheduler, num_epochs):
     test_loss = 0 
     for epoch in range(num_epochs):
@@ -112,8 +113,9 @@ if __name__ == '__main__':
     num_searches = 10   
     best_hyperparams = random_hyperparameter_search(num_searches)
     print(f'Best hyperparameters: {best_hyperparams}')
-
 """
+
+if __name__ == '__main__':
     # Training loop
     num_epochs = 200
     for epoch in range(num_epochs):
@@ -179,5 +181,3 @@ if __name__ == '__main__':
             # Save the visualization
             plt.savefig(f"vis/visualization_{epoch}.png")
             plt.close(fig)
-
-  """
