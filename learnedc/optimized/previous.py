@@ -43,6 +43,7 @@ import tensorflow_datasets as tfds
 import os
 import json
 from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.callbacks import ModelCheckpoint
 import numpy as np
 from PIL import Image
 
@@ -60,6 +61,7 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         for i, batch in enumerate(self.validation_dataset.take(self.num_images)):
             x = batch[0]
+            x = tf.expand_dims(x, axis=0)
             original = np.squeeze(x.numpy())  # Original image
             y = self.model.analysis_transform(x)  # Latent representation
             y_hat = self.model.synthesis_transform(y)  # Compressed output
@@ -309,7 +311,14 @@ def train(args):
 
   validation_dataset = validation_dataset.take(args.max_validation_steps)
   # Add the custom callback for visualization
-  visualization_callback = VisualizationCallback(model, validation_dataset, "visualizations")
+  visualization_callback = VisualizationCallback(model, validation_dataset, "vis")
+
+  model_checkpoint_callback = ModelCheckpoint(
+      filepath=os.path.join(args.train_path, "model_epoch_{epoch}.h5"),
+      save_weights_only=False,
+      save_best_only=False,
+      verbose=1
+  )
 
   model.fit(
       train_dataset.prefetch(8),
@@ -324,6 +333,7 @@ def train(args):
               histogram_freq=1, update_freq="epoch"),
           CustomBackupAndRestore(args.train_path),
           visualization_callback,
+          model_checkpoint_callback,
       ],
       verbose=int(args.verbose),
   )
@@ -430,7 +440,7 @@ def parse_args(argv):
       "--num_filters", type=int, default=128,
       help="Number of filters per layer.")
   train_cmd.add_argument(
-      "--train_path", default="/tmp/train_bls2017",
+      "--train_path", default="./models/bls2017",
       help="Path where to log training metrics for TensorBoard and back up "
            "intermediate model checkpoints.")
   train_cmd.add_argument(
