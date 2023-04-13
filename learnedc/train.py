@@ -12,18 +12,18 @@ import numpy as np
 
 # Load the VAE model
 num_epochs = 50
-latent_dim = 256
+latent_dim = 512
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 vae = VAE(latent_dim).to(device)
 
 
 # Define the loss function
-def loss_function(recon_x, x, mu, logvar, mu_hyper, logvar_hyper, beta=1.0):
-    distortion = F.mse_loss(recon_x, x, reduction='sum')
+def loss_function(recon_x, x, mu, logvar, mu_hyper, logvar_hyper, beta_distortion=1.0, beta_rate=1.0):
+    distortion = F.l1_loss(recon_x, x, reduction='sum')
     KLD_main = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     KLD_hyper = -0.5 * torch.sum(1 + logvar_hyper - mu_hyper.pow(2) - logvar_hyper.exp())
     rate = KLD_main + KLD_hyper
-    return distortion + beta * rate
+    return beta_distortion * distortion + beta_rate * rate
 
 # Set up the optimizer
 

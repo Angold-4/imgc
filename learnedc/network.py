@@ -3,32 +3,35 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class GDN(nn.Module):
-    def __init__(self, channels, beta_min=1e-6):
+    def __init__(self, channels, beta_min=1e-6, gamma_init=0.1, reparam_offset=2):
         super(GDN, self).__init__()
         self.channels = channels
         self.beta_min = beta_min
+        self.gamma_init = gamma_init
+        self.reparam_offset = reparam_offset
 
-        self.alpha = nn.Parameter(torch.ones(1, channels, 1, 1))
-        self.beta = nn.Parameter(torch.ones(1, channels, 1, 1))
-        self.epsilon = nn.Parameter(torch.ones(1, channels, 1, 1))
+        self.pedestal = self.reparam_offset ** 2
+        self.beta_bound = (self.beta_min + self.reparam_offset ** 2) ** 0.5
+        self.gamma_bound = self.reparam_offset
 
-    def forward(self, x):
-        x = x * torch.rsqrt(self.epsilon + F.conv2d(x**2, self.beta**2) + self.alpha**2)
-        return x
+        self.build()
 
-class IGDN(nn.Module):
-    def __init__(self, channels, beta_min=1e-6):
-        super(IGDN, self).__init__()
-        self.channels = channels
-        self.beta_min = beta_min
-
-        self.alpha = nn.Parameter(torch.ones(1, channels, 1, 1))
-        self.beta = nn.Parameter(torch.ones(1, channels, 1, 1))
-        self.epsilon = nn.Parameter(torch.ones(1, channels, 1, 1))
+    def build(self):
+        self.gamma = nn.Parameter(torch.Tensor(self.channels).fill_(self.gamma_init))
+        self.beta = nn.Parameter(torch.Tensor(self.channels).fill_(self.beta_min))
 
     def forward(self, x):
-        x = x * torch.sqrt(self.epsilon + F.conv2d(x**2, self.beta**2) + self.alpha**2)
-        return x
+        beta = torch.abs(self.beta) + self.beta_bound
+        gamma = torch.abs(self.gamma) + self.gamma_bound
+        norm = torch.sqrt(torch.sum((x ** 2), dim=1, keepdim=True) / self.channels + self.pedestal)
+        norm = norm * (beta[None, :, None, None])
+        return x / (norm ** gamma[None, :, None, None])
+
+class IGDN(GDN):
+    def forward(self, x):
+        beta = torch.abs(self.beta) + self.beta_bound
+        gamma = torch.abs(self.gamma) + self.gamma_bound
+        return x * (x.abs() ** (gamma[None, :, None, None] - 1) + beta[None, :, None, None] ** 2) ** 0.5
 
 class HyperpriorEncoder(nn.Module):
     def __init__(self, latent_dim):
@@ -56,16 +59,14 @@ class Encoder(nn.Module):
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            GDN(64),
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(128),
-            nn.ReLU(),
+            GDN(128),
             nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
-            nn.ReLU(),
+            GDN(256),
             nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(512),
-            nn.ReLU(),
         )
         self.fc_mu = nn.Linear(512 * 6 * 6, latent_dim)
         self.fc_logvar = nn.Linear(512 * 6 * 6, latent_dim)
@@ -84,13 +85,13 @@ class Decoder(nn.Module):
         self.conv_layers = nn.Sequential(
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
-            nn.ReLU(),
+            IGDN(256),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(128),
-            nn.ReLU(),
+            IGDN(128),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            IGDN(64),
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
         )
