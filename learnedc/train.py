@@ -16,10 +16,11 @@ vae = VAE(latent_dim).to(device)
 
 
 # Define the loss function
-def loss_function(recon_x, x, mu, logvar):
+def loss_function(recon_x, x, mu_main, logvar_main, mu_hyper, logvar_hyper):
     BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    return BCE + KLD
+    KLD_main = -0.5 * torch.sum(1 + logvar_main - mu_main.pow(2) - logvar_main.exp())
+    KLD_hyper = -0.5 * torch.sum(1 + logvar_hyper - mu_hyper.pow(2) - logvar_hyper.exp())
+    return BCE + KLD_main + KLD_hyper
 
 # Set up the optimizer
 optimizer = optim.Adam(vae.parameters(), lr=1e-3, weight_decay=1e-5)
@@ -50,8 +51,8 @@ if __name__ == '__main__':
         for batch_idx, (data, _) in enumerate(trainloader):
             data = data.to(device)
             optimizer.zero_grad()
-            recon_batch, mu, logvar = vae(data)
-            loss = loss_function(recon_batch, data, mu, logvar)
+            recon_batch, mu_main, logvar_main, mu_hyper, logvar_hyper = vae(data)
+            loss = loss_function(recon_batch, data, mu_main, logvar_main, mu_hyper, logvar_hyper)
             loss.backward()
             train_loss += loss.item()
             optimizer.step()
@@ -64,8 +65,8 @@ if __name__ == '__main__':
         with torch.no_grad():
             for i, (data, _) in enumerate(testloader):
                 data = data.to(device)
-                recon_batch, mu, logvar = vae(data)
-                test_loss += loss_function(recon_batch, data, mu, logvar).item()
+                recon_batch, mu_main, logvar, logvar_main, mu_hyper, logvar_hyper = vae(data)
+                test_loss += loss_function(recon_batch, data, mu_main, logvar_main, mu_hyper, logvar_hyper).item()
 
         test_loss /= len(testloader.dataset) # type: ignore
         print(f'====> Test set loss: {test_loss:.4f}')
@@ -79,9 +80,12 @@ if __name__ == '__main__':
             test_image = test_images[0].unsqueeze(0).to(device)
 
             # Encode, sample and decode the test image
-            mu, logvar = vae.encoder(test_image)
-            z = vae.reparameterize(mu, logvar)
-            reconstructed_image = vae.decoder(z)
+            mu_main, logvar_main = vae.encoder(test_image)
+            z_main = vae.reparameterize(mu_main, logvar_main)
+            mu_hyper, logvar_hyper = vae.hyperprior_encoder(z_main)
+            z_hyper = vae.reparameterize(mu_hyper, logvar_hyper)
+            z_hyper_decoded = vae.hyperprior_decoder(z_hyper)
+            reconstructed_image = vae.decoder(torch.cat((z_main, z_hyper_decoded), dim=1))
 
             # Visualize original image, latent representation, and reconstructed image
             fig, axes = plt.subplots(1, 3, figsize=(12, 4))
@@ -91,12 +95,16 @@ if __name__ == '__main__':
             axes[0].set_title('Original Image')
 
             # Latent representation
-            latent_representation = z.cpu().squeeze().numpy()
-            axes[1].imshow(latent_representation.reshape((int(np.sqrt(latent_representation.shape[0])), -1)), cmap='gray')
+            latent_representation = z_hyper.cpu().squeeze().numpy()
+            num_rows = int(np.ceil(np.sqrt(latent_representation.shape[0])))
+            num_cols = int(np.floor(latent_representation.shape[0] / num_rows))
+            axes[1].imshow(latent_representation.reshape((num_rows, num_cols)), cmap='gray')
             axes[1].set_title('Latent Representation')
 
             # Reconstructed image
             axes[2].imshow(reconstructed_image.cpu().squeeze().permute(1, 2, 0))
+            axes[2].set_title('Reconstructed Image')
+
             # Save the visualization
             plt.savefig(f"vis/visualization_{epoch}.png")
             plt.close(fig)
