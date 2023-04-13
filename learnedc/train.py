@@ -16,15 +16,14 @@ vae = VAE(latent_dim).to(device)
 
 
 # Define the loss function
-def loss_function(recon_x, x, mu_main, logvar_main, mu_hyper, logvar_hyper):
-    BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
-    KLD_main = -0.5 * torch.sum(1 + logvar_main - mu_main.pow(2) - logvar_main.exp())
+def loss_function(recon_x, x, mu, logvar, mu_hyper, logvar_hyper, beta=1.0):
+    distortion = F.mse_loss(recon_x, x, reduction='sum')
+    KLD_main = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     KLD_hyper = -0.5 * torch.sum(1 + logvar_hyper - mu_hyper.pow(2) - logvar_hyper.exp())
-    return BCE + KLD_main + KLD_hyper
+    rate = KLD_main + KLD_hyper
+    return distortion + beta * rate
 
 # Set up the optimizer
-optimizer = optim.Adam(vae.parameters(), lr=1e-3, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
 # Define the data loading
 transform = transforms.Compose([
@@ -34,8 +33,12 @@ transform = transforms.Compose([
 trainset = STL10(root='./data', split='train', download=True, transform=transform)
 testset = STL10(root='./data', split='test', download=True, transform=transform)
 
-trainloader = DataLoader(trainset, batch_size=8, shuffle=True, num_workers=4)
-testloader = DataLoader(testset, batch_size=8, shuffle=False, num_workers=4)
+trainloader = DataLoader(trainset, batch_size=24, shuffle=True, num_workers=4)
+testloader = DataLoader(testset, batch_size=24, shuffle=False, num_workers=4)
+
+optimizer = optim.Adam(vae.parameters(), lr=1e-4, weight_decay=1e-5)
+
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
 if __name__ == '__main__':
     if not os.path.exists("model"):
@@ -65,7 +68,7 @@ if __name__ == '__main__':
         with torch.no_grad():
             for i, (data, _) in enumerate(testloader):
                 data = data.to(device)
-                recon_batch, mu_main, logvar, logvar_main, mu_hyper, logvar_hyper = vae(data)
+                recon_batch, mu_main, logvar_main, mu_hyper, logvar_hyper = vae(data)
                 test_loss += loss_function(recon_batch, data, mu_main, logvar_main, mu_hyper, logvar_hyper).item()
 
         test_loss /= len(testloader.dataset) # type: ignore
