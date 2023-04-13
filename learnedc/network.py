@@ -1,20 +1,48 @@
 import torch 
 import torch.nn as nn
+import torch.nn.functional as F
+
+class GDN(nn.Module):
+    def __init__(self, channels, beta_min=1e-6):
+        super(GDN, self).__init__()
+        self.channels = channels
+        self.beta_min = beta_min
+
+        self.alpha = nn.Parameter(torch.ones(1, channels, 1, 1))
+        self.beta = nn.Parameter(torch.ones(1, channels, 1, 1))
+        self.epsilon = nn.Parameter(torch.ones(1, channels, 1, 1))
+
+    def forward(self, x):
+        return x * torch.rsqrt(self.epsilon + F.conv2d(x**2, self.beta**2) + self.alpha**2)
+
+class IGDN(nn.Module):
+    def __init__(self, channels, beta_min=1e-6):
+        super(IGDN, self).__init__()
+        self.channels = channels
+        self.beta_min = beta_min
+
+        self.alpha = nn.Parameter(torch.ones(1, channels, 1, 1))
+        self.beta = nn.Parameter(torch.ones(1, channels, 1, 1))
+        self.epsilon = nn.Parameter(torch.ones(1, channels, 1, 1))
+
+    def forward(self, x):
+        return x * torch.sqrt(self.epsilon + F.conv2d(x**2, self.beta**2) + self.alpha**2)
+
 
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            GDN(64),
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            GDN(128),
             nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            GDN(256),
             nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            GDN(512),
             nn.Conv2d(512, 1024, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            GDN(1024),
         )
         self.fc_mu = nn.Linear(1024 * 3 * 3, latent_dim)
         self.fc_logvar = nn.Linear(1024 * 3 * 3, latent_dim)
@@ -32,13 +60,13 @@ class Decoder(nn.Module):
         self.fc = nn.Linear(latent_dim, 1024 * 3 * 3)
         self.conv_layers = nn.Sequential(
             nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            IGDN(512),
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            IGDN(256),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            IGDN(128),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
+            IGDN(64),
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
         )
