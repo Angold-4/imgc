@@ -44,6 +44,7 @@ import os
 import json
 from tensorflow.keras.callbacks import Callback
 from tensorflow.keras.callbacks import ModelCheckpoint
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
@@ -59,21 +60,31 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
             os.makedirs(output_dir)
 
     def on_epoch_end(self, epoch, logs=None):
+        fig, axes = plt.subplots(3, 3, figsize=(12, 12))
+
         for i, batch in enumerate(self.validation_dataset.take(self.num_images)):
             x = batch[0]
             original = np.squeeze(x.numpy())  # Original image
+            x = tf.expand_dims(x, axis=0)
             y = self.model.analysis_transform(x)  # Latent representation
             y_hat = self.model.synthesis_transform(y)  # Compressed output
 
-            original_image = Image.fromarray(np.uint8(original))
-            original_image.save(os.path.join(self.output_dir, f"original_{i}_epoch_{epoch}.png"))
+            axes[i, 0].imshow(original)
+            axes[i, 0].set_title(f"Original {i} (Size: {original.nbytes / 1024:.1f} KB)")
+            axes[i, 0].axis('off')
 
             y_reshaped = np.squeeze(y.numpy())
-            y_image = Image.fromarray(np.uint8(y_reshaped[0] * 255.0))
-            y_image.save(os.path.join(self.output_dir, f"latent_{i}_epoch_{epoch}.png"))
+            axes[i, 1].imshow(np.uint8(y_reshaped[0] * 255.0), cmap='gray')
+            axes[i, 1].set_title(f"Latent {i}")
+            axes[i, 1].axis('off')
 
-            y_hat_image = Image.fromarray(np.uint8(y_hat.numpy()[0]))
-            y_hat_image.save(os.path.join(self.output_dir, f"compressed_{i}_epoch_{epoch}.png"))
+            axes[i, 2].imshow(np.uint8(y_hat.numpy()[0]))
+            axes[i, 2].set_title(f"Compressed {i} (Size: {y_hat.numpy().nbytes / 1024:.1f} KB)")
+            axes[i, 2].axis('off')
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.output_dir, f"visualization_epoch_{epoch}.png"))
+        plt.close(fig)
 
 
 def read_png(filename):
@@ -313,12 +324,6 @@ def train(args):
   # Add the custom callback for visualization
   visualization_callback = VisualizationCallback(model, validation_dataset, "vis")
 
-  model_checkpoint_callback = ModelCheckpoint(
-      filepath=os.path.join(args.train_path, "model_epoch_{epoch}.h5"),
-      save_weights_only=False,
-      save_best_only=False,
-      verbose=1
-  )
 
   model.fit(
       train_dataset.prefetch(8),
@@ -333,7 +338,6 @@ def train(args):
               histogram_freq=1, update_freq="epoch"),
           CustomBackupAndRestore(args.train_path),
           visualization_callback,
-          model_checkpoint_callback,
       ],
       verbose=int(args.verbose),
   )
