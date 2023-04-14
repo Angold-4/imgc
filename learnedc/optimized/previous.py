@@ -64,7 +64,7 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
 
         for i, batch in enumerate(self.validation_dataset.take(self.num_images)):
             x = batch[0]
-            original = np.squeeze(x.numpy())  # Original image
+            original = np.squeeze((x.numpy() * 255).astype(np.uint8))  # Original image
             x = tf.expand_dims(x, axis=0)
             y = self.model.analysis_transform(x)  # Latent representation
             y_hat = self.model.synthesis_transform(y)  # Compressed output
@@ -79,7 +79,7 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
             axes[i, 1].axis('off')
 
             axes[i, 2].imshow(np.uint8(y_hat.numpy()[0]))
-            axes[i, 2].set_title(f"Compressed {i} (Size: {y_hat.numpy().nbytes / 1024:.1f} KB)")
+            axes[i, 2].set_title(f"Compressed {i} (Size: {y_reshaped.nbytes / 1024:.1f} KB)")
             axes[i, 2].axis('off')
 
         plt.tight_layout()
