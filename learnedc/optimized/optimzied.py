@@ -361,7 +361,6 @@ def train(args):
           tf.keras.callbacks.TensorBoard(
               log_dir=args.train_path,
               histogram_freq=1, update_freq="epoch"),
-          CustomBackupAndRestore(args.train_path),
           visualization_callback,
       ],
       verbose=int(args.verbose),
