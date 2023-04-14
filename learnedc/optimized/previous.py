@@ -61,7 +61,6 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         for i, batch in enumerate(self.validation_dataset.take(self.num_images)):
             x = batch[0]
-            x = tf.expand_dims(x, axis=0)
             original = np.squeeze(x.numpy())  # Original image
             y = self.model.analysis_transform(x)  # Latent representation
             y_hat = self.model.synthesis_transform(y)  # Compressed output
@@ -69,7 +68,8 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
             original_image = Image.fromarray(np.uint8(original))
             original_image.save(os.path.join(self.output_dir, f"original_{i}_epoch_{epoch}.png"))
 
-            y_image = Image.fromarray(np.uint8(y.numpy()[0] * 255.0))
+            y_reshaped = np.squeeze(y.numpy())
+            y_image = Image.fromarray(np.uint8(y_reshaped[0] * 255.0))
             y_image.save(os.path.join(self.output_dir, f"latent_{i}_epoch_{epoch}.png"))
 
             y_hat_image = Image.fromarray(np.uint8(y_hat.numpy()[0]))
