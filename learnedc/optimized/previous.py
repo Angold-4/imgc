@@ -46,6 +46,7 @@ from tensorflow.keras.callbacks import Callback
 from tensorflow.keras.callbacks import ModelCheckpoint
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 from PIL import Image
 
 class VisualizationCallback(tf.keras.callbacks.Callback):
@@ -64,7 +65,8 @@ class VisualizationCallback(tf.keras.callbacks.Callback):
 
         for i, batch in enumerate(self.validation_dataset.take(self.num_images)):
             x = batch[0]
-            original = np.squeeze((x.numpy() * 255).astype(np.uint8))  # Original image
+            original = np.squeeze(x.numpy().astype(np.uint8))  # Original image
+
             x = tf.expand_dims(x, axis=0)
             y = self.model.analysis_transform(x)  # Latent representation
             y_hat = self.model.synthesis_transform(y)  # Compressed output
