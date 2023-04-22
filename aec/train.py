@@ -34,9 +34,11 @@ def train(args):
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8, pin_memory=True, shuffle=True)
     validation_loader = DataLoader(validation_dataset, batch_size=args.batch_size, num_workers=8, pin_memory=True, shuffle=True)
 
-    sample_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    sample_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    sample_images = [] # list of all the sample images (shld be fixed)
     for index in sample_indices:
         sample_image = validation_dataset[index]
+        sample_images.append(sample_image)
         os.makedirs(f"{args.test_path}/internal_{index}", exist_ok=True)
         sample_image_out = Image.fromarray((sample_image.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
         sample_image_out.save(f"{args.test_path}/internal_{index}/sample_image.png")
@@ -64,11 +66,10 @@ def train(args):
                 validation_loss += metrics['loss']
         validation_loss /= (batch_idx + 1)
 
-
         # Save multiple compressed images for each epoch
         with torch.no_grad():
             for index in sample_indices:
-                sample_image = validation_dataset[index].unsqueeze(0).to(device)
+                sample_image = sample_images[index-1].unsqueeze(0).to(device)
                 compressed = model.encoder(sample_image)
                 sample_reconstructed = model.decoder(compressed)
                 os.makedirs(f"{args.test_path}/internal_{index}", exist_ok=True)

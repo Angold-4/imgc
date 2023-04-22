@@ -14,6 +14,7 @@ class Encoder(nn.Sequential):
     """The analysis transform."""
     def __init__(self, num_filters):
         super().__init__(
+            Normalize(255.0),
             nn.Conv2d(3, num_filters, kernel_size=9, stride=4, padding=4, bias=True),
             GDN(num_filters),
             nn.Conv2d(num_filters, num_filters, kernel_size=5, stride=2, padding=2, bias=True),
@@ -30,6 +31,7 @@ class Decoder(nn.Sequential):
             nn.ConvTranspose2d(num_filters, num_filters, kernel_size=5, stride=2, padding=2, output_padding=1, bias=True),
             GDN(num_filters, inverse=True),
             nn.ConvTranspose2d(num_filters, 3, kernel_size=9, stride=4, padding=4, output_padding=3, bias=True),
+            Denormalize(255.0)
         )
     
 class AE(nn.Module):
@@ -74,23 +76,3 @@ class AE(nn.Module):
         x_hat = x_hat[0, :x_shape[0], :x_shape[1], :].round()
         return torch.clamp(x_hat, 0, 255).byte()
 
-"""
-if __name__ == "__main__":
-    # Initialize the autoencoder with the desired number of filters
-    num_filters = 64
-    autoencoder = SimpleAutoencoder(num_filters)
-
-    # Generate a random input tensor with the shape (batch_size, channels, height, width)
-    batch_size = 4
-    input_tensor = torch.randn(batch_size, 3, 256, 256)
-
-    # Pass the input tensor through the autoencoder
-    output_tensor = autoencoder(input_tensor)
-
-    # Print the input and output tensors for visual inspection
-    print("Input tensor:")
-    print(input_tensor)
-
-    print("\nOutput tensor:")
-    print(output_tensor)
-"""
